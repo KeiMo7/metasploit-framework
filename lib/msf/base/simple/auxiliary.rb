@@ -70,6 +70,14 @@ module Auxiliary
       mod.init_ui(nil, nil)
     end
 
+    preflight_result = mod.preflight_check
+    mod.preflight_result = preflight_result
+    omod.preflight_result = preflight_result if omod.respond_to?(:preflight_result=)
+    if preflight_result.enforced?
+      mod.preflight_publish(preflight_result)
+      raise PreflightError.new(preflight_result) unless preflight_result.allowed?
+    end
+
     run_uuid = Rex::Text.rand_text_alphanumeric(24)
     mod.run_uuid = run_uuid
     omod.run_uuid = run_uuid
@@ -144,7 +152,7 @@ module Auxiliary
         "Auxiliary: #{mod.refname} check",
         ctx,
         Proc.new do |ctx_|
-          self.job_run_proc(ctx_) do |m|
+          self.job_run_proc(ctx_, record_execution: false) do |m|
             m.check
           end
         end,
@@ -154,7 +162,7 @@ module Auxiliary
       [run_uuid, mod.job_id]
     else
       # Run check if it exists
-      result = self.job_run_proc(ctx) do |m|
+      result = self.job_run_proc(ctx, record_execution: false) do |m|
         m.check
       end
       self.job_cleanup_proc(ctx)
@@ -176,7 +184,7 @@ protected
   #
   # Job run proc, sets up the module and kicks it off.
   #
-  def self.job_run_proc(ctx, &block)
+  def self.job_run_proc(ctx, record_execution: true, &block)
     mod = ctx[0]
     run_uuid = ctx[1]
     job_listener = ctx[2]
@@ -190,6 +198,12 @@ protected
         result = block.call(mod)
         # Store the check result if the block returned a CheckCode
         mod.check_code = result if result.is_a?(Msf::Exploit::CheckCode)
+        if record_execution && mod.respond_to?(:preflight_record_execution)
+          success = !mod.respond_to?(:fail_reason) ||
+                    mod.fail_reason.nil? ||
+                    mod.fail_reason == Msf::Module::Failure::None
+          mod.preflight_record_execution(success: success)
+        end
         job_listener.completed(run_uuid, result, mod)
       rescue ::Exception => e
         job_listener.failed(run_uuid, e, mod)

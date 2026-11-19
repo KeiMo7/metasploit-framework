@@ -84,6 +84,8 @@ module Evasion
       # Let's rock this party
       driver.run
 
+      oevasion.preflight_result = evasion.preflight_result if oevasion.respond_to?(:preflight_result=)
+
       # Save the job identifier this evasion is running as
       evasion.job_id  = driver.job_id
       evasion.run_uuid = driver.run_uuid
@@ -97,6 +99,11 @@ module Evasion
     rescue ::Msf::OptionValidateError => e
       evasion.error = e
       ::Msf::Ui::Formatter::OptionValidateError.print_error(evasion, e)
+    rescue ::Msf::PreflightError => e
+      evasion.error = e
+      evasion.fail_reason = Msf::Module::Failure::BadConfig if evasion.respond_to?(:fail_reason=)
+      evasion.fail_detail = e.message if evasion.respond_to?(:fail_detail=)
+      oevasion.preflight_result = e.result if oevasion.respond_to?(:preflight_result=)
     rescue ::Exception => e
       evasion.error = e
       evasion.print_error("evasion failed: #{e}")
@@ -114,4 +121,3 @@ end
 
 end
 end
-

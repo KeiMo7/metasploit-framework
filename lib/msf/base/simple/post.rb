@@ -65,6 +65,14 @@ module Post
       mod.init_ui(nil, nil)
     end
 
+    preflight_result = mod.preflight_check
+    mod.preflight_result = preflight_result
+    omod.preflight_result = preflight_result if omod.respond_to?(:preflight_result=)
+    if preflight_result.enforced?
+      mod.preflight_publish(preflight_result)
+      raise PreflightError.new(preflight_result) unless preflight_result.allowed?
+    end
+
     run_uuid = Rex::Text.rand_text_alphanumeric(24)
     mod.run_uuid = run_uuid
     omod.run_uuid = run_uuid
@@ -116,6 +124,12 @@ protected
       if s
         mod.framework.events.on_session_module_run(s, mod)
         result = mod.run
+        if mod.respond_to?(:preflight_record_execution)
+          success = !mod.respond_to?(:fail_reason) ||
+                    mod.fail_reason.nil? ||
+                    mod.fail_reason == Msf::Module::Failure::None
+          mod.preflight_record_execution(success: success)
+        end
         job_listener.completed(run_uuid, result, mod)
         return result
       else

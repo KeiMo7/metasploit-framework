@@ -64,6 +64,13 @@ class EvasionDriver
     # isn't.
     payload.options.validate(payload.datastore)
 
+    self.preflight_result = evasion.preflight_check(payload_name: payload.refname, payload: payload)
+    evasion.preflight_result = preflight_result
+    if preflight_result.enforced?
+      evasion.preflight_publish(preflight_result)
+      raise PreflightError.new(preflight_result) unless preflight_result.allowed?
+    end
+
     return true
   end
 
@@ -119,6 +126,9 @@ class EvasionDriver
 
   attr_accessor :job_listener
 
+  # @return [Msf::Preflight::Result, nil]
+  attr_accessor :preflight_result
+
 protected
 
   #
@@ -153,4 +163,3 @@ protected
 end
 
 end
-

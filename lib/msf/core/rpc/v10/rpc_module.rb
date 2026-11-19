@@ -786,7 +786,10 @@ private
   end
 
   def _run_exploit(mod, opts)
-    if opts['PAYLOAD'].blank?
+    auto_select_preflight = mod.respond_to?(:preflight_enabled?) &&
+                            mod.preflight_enabled? &&
+                            mod.dependency_definition.payload_selection['AutoSelect'] == true
+    if opts['PAYLOAD'].blank? && !auto_select_preflight
       opts['PAYLOAD'] = Msf::Payload.choose_payload(mod)
     end
 

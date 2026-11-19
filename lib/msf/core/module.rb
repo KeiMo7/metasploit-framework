@@ -20,6 +20,7 @@ module Msf
     autoload :AuxiliaryAction, 'msf/core/module/auxiliary_action'
     autoload :Compatibility, 'msf/core/module/compatibility'
     autoload :DataStore, 'msf/core/module/data_store'
+    autoload :Dependencies, 'msf/core/module/dependencies'
     autoload :Deprecated, 'msf/core/module/deprecated'
     autoload :Failure, 'msf/core/module/failure'
     autoload :FullName, 'msf/core/module/full_name'
@@ -48,6 +49,7 @@ module Msf
     include Msf::Module::Author
     include Msf::Module::Compatibility
     include Msf::Module::DataStore
+    include Msf::Module::Dependencies
     include Msf::Module::Failure
     include Msf::Module::FullName
     include Msf::Module::ModuleInfo
@@ -153,6 +155,7 @@ module Msf
           OptBool.new('VERBOSE',     [ false, 'Enable detailed status messages', false ])
         ], Msf::Module)
 
+      setup_preflight_options
     end
 
     def has_check?

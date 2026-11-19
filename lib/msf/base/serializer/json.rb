@@ -78,7 +78,7 @@ module Msf
 
       # Dumps information common to all modules
       def self.dump_common_module_info(mod)
-        {
+        info = {
           'name' => mod.name,
           'fullname' => mod.fullname,
           'authors' => dump_authors(mod),
@@ -86,6 +86,10 @@ module Msf
           'description' => Rex::Text.compress(mod.description),
           'options' => dump_options(mod)
         }
+        if mod.respond_to?(:dependency_metadata) && mod.dependency_metadata
+          info['dependencies'] = mod.dependency_metadata
+        end
+        info
       end
 
       # Dumps information about an exploit module.

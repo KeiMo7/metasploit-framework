@@ -59,6 +59,21 @@ end
 
 ###
 #
+# This exception is raised when preflight dependency or payload validation
+# fails. The structured result is retained for console, RPC, and CI consumers.
+#
+###
+class PreflightError < ValidationError
+  attr_reader :result
+
+  def initialize(result)
+    @result = result
+    super(result.respond_to?(:summary) ? result.summary : 'Preflight validation failed')
+  end
+end
+
+###
+#
 # This exception is raised when the module cache is invalidated.  It is
 # handled internally by the ModuleManager.
 #

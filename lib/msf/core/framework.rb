@@ -234,6 +234,19 @@ class Framework
     }
   end
 
+  # Facts discovered by reconnaissance and earlier modules in this framework
+  # instance. Used by preflight validation to make dependency and payload
+  # decisions from observed target state rather than declared target metadata.
+  #
+  # @return [Msf::Preflight::FactStore]
+  def preflight_facts
+    return @preflight_facts if @preflight_facts
+
+    synchronize {
+      @preflight_facts ||= Msf::Preflight::FactStore.new
+    }
+  end
+
   # The framework instance's thread manager. The thread manager
   # provides a cleaner way to manage spawned threads
   #

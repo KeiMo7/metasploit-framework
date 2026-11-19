@@ -127,6 +127,7 @@ module Auxiliary::Report
   # See data/sql/*.sql and lib/msf/core/db.rb for more info
   #
   def report_host(opts)
+    record_preflight_host(opts)
     return if not db
     opts = {
       :workspace => myworkspace,
@@ -168,6 +169,7 @@ module Auxiliary::Report
   # Report detection of a service
   #
   def report_service(opts={})
+    record_preflight_service(opts)
     return if not db
     opts = {
         :workspace => myworkspace,
@@ -177,6 +179,7 @@ module Auxiliary::Report
   end
 
   def report_note(opts={})
+    record_preflight_note(opts)
     return if not db
     opts = {
         :workspace => myworkspace,
@@ -184,6 +187,110 @@ module Auxiliary::Report
     }.merge(opts)
     framework.db.report_note(opts)
   end
+
+  def record_preflight_host(opts)
+    store = framework.preflight_facts if framework.respond_to?(:preflight_facts)
+    return unless store
+
+    target = preflight_target_address(opts[:host] || opts['host'])
+    return if target.nil?
+
+    os_name = opts[:os_name] || opts['os_name']
+    arch = opts[:arch] || opts['arch']
+    if os_name
+      store.record_fact(
+        name: 'os.family',
+        value: os_name,
+        type: 'platform',
+        target: target,
+        source: ((refname if respond_to?(:refname)) || 'report'),
+        module_ref: (refname if respond_to?(:refname))
+      )
+    end
+    return unless arch
+
+    store.record_fact(
+      name: 'os.arch',
+      value: arch,
+      type: 'arch',
+      target: target,
+      source: ((refname if respond_to?(:refname)) || 'report'),
+      module_ref: (refname if respond_to?(:refname))
+    )
+  rescue StandardError => e
+    elog('Failed to record preflight host facts', error: e) if respond_to?(:elog)
+  end
+
+  def record_preflight_service(opts)
+    store = framework.preflight_facts if framework.respond_to?(:preflight_facts)
+    return unless store
+
+    target = preflight_target_address(opts[:host] || opts['host'])
+    port = opts[:port] || opts['port']
+    return if target.nil? || port.nil?
+
+    proto = (opts[:proto] || opts['proto'] || 'tcp').to_s.downcase
+    store.record_fact(
+      name: 'open_port',
+      value: port.to_i,
+      type: 'port',
+      target: target,
+      port: port.to_i,
+      proto: proto,
+      source: ((refname if respond_to?(:refname)) || 'report'),
+      module_ref: (refname if respond_to?(:refname)),
+      metadata: { 'service' => opts[:name] || opts['name'] }
+    )
+  rescue StandardError => e
+    elog('Failed to record preflight service facts', error: e) if respond_to?(:elog)
+  end
+
+  def record_preflight_note(opts)
+    store = framework.preflight_facts if framework.respond_to?(:preflight_facts)
+    return unless store
+
+    note_type = (opts[:type] || opts['type']).to_s
+    return if note_type.empty?
+
+    target = preflight_target_address(opts[:host] || opts['host'])
+    data = opts[:data] || opts['data']
+    value = if data.is_a?(Hash)
+              data[:version] || data['version'] || data[:value] || data['value']
+            else
+              data
+            end
+    return if value.nil?
+
+    type = if note_type.downcase.include?('version')
+             'version'
+           elsif note_type.downcase.include?('port')
+             'port'
+           else
+             'value'
+           end
+    port = opts[:port] || opts['port']
+    store.record_fact(
+      name: note_type,
+      value: value,
+      type: type,
+      target: target,
+      port: port&.to_i,
+      proto: opts[:proto] || opts['proto'],
+      source: ((refname if respond_to?(:refname)) || 'report'),
+      module_ref: (refname if respond_to?(:refname))
+    )
+  rescue StandardError => e
+    elog('Failed to record preflight note facts', error: e) if respond_to?(:elog)
+  end
+
+  def preflight_target_address(value)
+    value = value.address if value.respond_to?(:address)
+    value = nil if value.respond_to?(:empty?) && value.empty?
+    value ||= rhost if respond_to?(:rhost)
+    value&.to_s
+  end
+
+  private :record_preflight_host, :record_preflight_service, :record_preflight_note, :preflight_target_address
 
   # This Legacy method is responsible for creating credentials from data supplied
   # by a module. This method is deprecated and the new Metasploit::Credential methods

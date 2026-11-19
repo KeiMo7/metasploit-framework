@@ -117,6 +117,8 @@ class Obj
   attr_reader :notes
   # @return [Array<String>]
   attr_reader :session_types
+  # @return [Hash, nil]
+  attr_reader :dependencies
   # @return [Integer] The type of payload, e.g. Single, Stager, Adapter
   attr_reader :payload_type
   # @return [String, nil] Name of the adapter if applicable
@@ -190,6 +192,7 @@ class Obj
     @check = module_instance.has_check?
 
     @notes = module_instance.notes
+    @dependencies = module_instance.dependency_metadata if module_instance.respond_to?(:dependency_metadata)
 
     @session_types = module_instance.respond_to?(:session_types) && module_instance.session_types
 
@@ -243,6 +246,7 @@ class Obj
     }
 
     data['actions'] = @actions if @actions
+    data['dependencies'] = @dependencies if @dependencies
 
     if @payload_type
       payload_data = {
@@ -312,6 +316,7 @@ class Obj
     @default_credential  = obj_hash['default_credential']
     notes                = obj_hash['notes']
     @notes               = (notes.nil? || notes.empty?) ? EMPTY_HASH : Obj.dedup_notes(notes)
+    @dependencies        = obj_hash['dependencies']
     @needs_cleanup       = obj_hash['needs_cleanup']
     @session_types       = obj_hash['session_types']
     @autofilter_ports    = obj_hash['autofilter_ports']
